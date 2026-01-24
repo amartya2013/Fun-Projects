@@ -1,12 +1,8 @@
 import cv2 as cv
-import numpy as np
 import mediapipe as mp
 
-
-
 mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
-cap = cv.VideoCapture(1)
+cap = cv.VideoCapture(0)
 
 with mp_hands.Hands(
     static_image_mode=False,
@@ -14,20 +10,37 @@ with mp_hands.Hands(
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5
 ) as hands:
+
     while True:
         worked, frame = cap.read()
-        if worked:
-            frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-            results = hands.process(frame)
-            frame = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
-            if results.multi_hand_landmarks:
-                for hand_landmark in results.multi_hand_landmarks:
-                    mp_drawing.draw_landmarks(frame, hand_landmark, connections=mp_hands.HAND_CONNECTIONS)
-            cv.imshow("frame", frame)
-        key = cv.waitKey(5) & 0xFF
-        if key == 27:
+        if not worked:
             break
+
+        h, w, _ = frame.shape
+
+        frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        results = hands.process(frame_rgb)
+
+        if results.multi_hand_landmarks:
+            for hand_landmarks in results.multi_hand_landmarks:
+
+                # Landmark 0 = wrist
+                lm0 = hand_landmarks.landmark[0]
+
+                cx = int(lm0.x * w)
+                cy = int(lm0.y * h)
+
+                # Red dot
+                cv.circle(frame, (cx, cy), 8, (0, 0, 255), -1)
+
+        cv.imshow("frame", frame)
+
+        if cv.waitKey(5) & 0xFF == 27:
+            break
+
+cap.release()
 cv.destroyAllWindows()
+
 
 
 
