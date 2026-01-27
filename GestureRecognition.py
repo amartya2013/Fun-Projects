@@ -1,44 +1,48 @@
-import cv2
 import mediapipe as mp
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
+import cv2
+import time
 
 
-cap = cv2.VideoCapture(0)
-with mp_hands.Hands(
-    model_complexity=0,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5) as hands:
-    while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-            print("Ignoring empty camera frame.")
-      # If loading a video, use 'break' instead of 'continue'.
-            continue
+BaseOptions = mp.tasks.BaseOptions
+GestureRecognizer = mp.tasks.vision.GestureRecognizer
+GestureRecognizerOptions = mp.tasks.vision.GestureRecognizerOptions
+GestureRecognizerResult = mp.tasks.vision.GestureRecognizerResult
+VisionRunningMode = mp.tasks.vision.RunningMode
 
-    # To improve performance, optionally mark the image as not writeable to
-    # pass by reference.
-        image.flags.writeable = False
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = hands.process(image)
 
-    # Draw the hand annotations on the image.
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(
-                image,
-                hand_landmarks,
-                mp_hands.HAND_CONNECTIONS,
-                mp_drawing_styles.get_default_hand_landmarks_style(),
-                mp_drawing_styles.get_default_hand_connections_style())
-    # Flip the image horizontally for a selfie-view display.
-        cv2.imshow('MediaPipe Hands', cv2.flip(image, 1))
-        if cv2.waitKey(5) & 0xFF == 27:
+# Create a gesture recognizer instance with the live stream mode:
+def print_result(result: GestureRecognizerResult, output_image: mp.Image,timestamp_ms):
+    if result.gestures:
+        top_gesture = result.gestures[0][0]
+        category_name = top_gesture.category_name
+        print(category_name)
+
+
+options = GestureRecognizerOptions(
+    base_options=BaseOptions(model_asset_path='gesture_recognizer.task'),
+    running_mode=VisionRunningMode.LIVE_STREAM,
+    result_callback=print_result)
+with GestureRecognizer.create_from_options(options) as recognizer:
+    cap = cv2.VideoCapture(0)
+    start_time = time.time()
+    while True:
+        _, frame = cap.read()
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
+        # Send live image data to perform gesture recognition.
+        # The results are accessible via the `result_callback` provided in
+        # the `GestureRecognizerOptions` object.
+        # The gesture recognizer must be created with the live stream mode.
+        current_time = time.time()
+        timestamp_ms = int((time.monotonic() - start_time) * 1000)
+        recognizer.recognize_async(mp_image, timestamp_ms=timestamp_ms)
+        cv2.imshow("HANDRECOG", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
-
 cap.release()
 cv2.destroyAllWindows()
+# ...
+
+
+
+
+
