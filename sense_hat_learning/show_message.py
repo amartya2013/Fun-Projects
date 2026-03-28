@@ -32,9 +32,12 @@ colors = {
 
 while True:
     text = input("What is the text?")
+    if text == 'quit':
+        break
     text_color = input("What color should the text be?")
     background_color = input("What color should background be?")
     if text_color in colors.keys() and background_color in colors.keys():
         sense.show_message(text, text_colour = colors[text_color], back_colour =colors[background_color])
     else:
         print("Please enter valid color inputs")
+sense.clear()
